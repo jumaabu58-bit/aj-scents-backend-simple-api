@@ -206,8 +206,10 @@ app.post('/api/payments/initialize', async (req, res) => {
   }
 });
 
+
 // Start server
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`AJ Scents Backend running on port ${PORT}`);
 });
