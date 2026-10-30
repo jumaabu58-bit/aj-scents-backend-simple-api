@@ -1,15 +1,20 @@
 const express = require('express');
 const cors = require('cors');
-const { v4: uuidv4 } = require('uuid');
-require('dotenv').config();
+const fetch = require('node-fetch'); // We will add this
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ======================
-// PRODUCTS (Hardcoded for simplicity)
+// PESAPAL TEST CREDENTIALS
+// Replace these with your real Test keys
 // ======================
+const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
+const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
+const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // Sandbox
+
+// Products
 const products = [
   {
     id: 1,
@@ -85,17 +90,12 @@ const products = [
   }
 ];
 
-// Store orders in memory (temporary)
 let orders = [];
-
-// ======================
-// ROUTES
-// ======================
 
 // Home
 app.get('/', (req, res) => {
   res.json({ 
-    message: 'AJ Scents Backend is running!',
+    message: 'AJ Scents Backend with Pesapal is running!',
     status: 'OK'
   });
 });
@@ -107,15 +107,6 @@ app.get('/api/products', (req, res) => {
     count: products.length,
     data: products
   });
-});
-
-// Get single product
-app.get('/api/products/:id', (req, res) => {
-  const product = products.find(p => p.id === Number(req.params.id));
-  if (!product) {
-    return res.status(404).json({ success: false, message: 'Product not found' });
-  }
-  res.json({ success: true, data: product });
 });
 
 // Create Order
@@ -157,7 +148,7 @@ app.post('/api/orders', (req, res) => {
       customer: { name, phone, email, address },
       items: orderItems,
       totalAmount,
-      paymentMethod: paymentMethod || 'flutterwave',
+      paymentMethod: paymentMethod || 'pesapal',
       paymentStatus: 'pending',
       orderStatus: 'pending',
       createdAt: new Date()
@@ -177,39 +168,99 @@ app.post('/api/orders', (req, res) => {
   }
 });
 
-// Initialize Payment (Flutterwave)
+// ======================
+// PESAPAL PAYMENT
+// ======================
 app.post('/api/payments/initialize', async (req, res) => {
   try {
     const { orderId } = req.body;
-
     const order = orders.find(o => o.id === Number(orderId));
+
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // For now we return a simulated payment link
-    // Later we will connect real Flutterwave keys
-    const paymentLink = `https://checkout.flutterwave.com/v3/hosted/pay/simulated-${order.orderNumber}`;
-
-    res.json({
-      success: true,
-      message: 'Payment initialized',
-      data: {
-        paymentLink,
-        orderNumber: order.orderNumber
-      }
+    // 1. Get Pesapal Token
+    const tokenRes = await fetch(`${PESAPAL_BASE_URL}/Auth/RequestToken`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        consumer_key: PESAPAL_CONSUMER_KEY,
+        consumer_secret: PESAPAL_CONSUMER_SECRET
+      })
     });
 
+    const tokenData = await tokenRes.json();
+
+    if (!tokenData.token) {
+      console.error('Token error:', tokenData);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Failed to get Pesapal token',
+        error: tokenData
+      });
+    }
+
+    const token = tokenData.token;
+
+    // 2. Submit Order to Pesapal
+    const orderPayload = {
+      id: order.orderNumber,
+      currency: 'UGX',
+      amount: order.totalAmount,
+      description: `AJ Scents Order ${order.orderNumber}`,
+      callback_url: 'https://jumaabu58-bit.github.io/aj-scents-frontend/',
+      notification_id: '', // We can add IPN later
+      billing_address: {
+        email_address: order.customer.email || 'customer@ajscents.com',
+        phone_number: order.customer.phone,
+        country_code: 'UG',
+        first_name: order.customer.name.split(' ')[0] || 'Customer',
+        last_name: order.customer.name.split(' ').slice(1).join(' ') || 'AJScents'
+      }
+    };
+
+    const orderRes = await fetch(`${PESAPAL_BASE_URL}/Transactions/SubmitOrderRequest`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(orderPayload)
+    });
+
+    const orderData = await orderRes.json();
+
+    if (orderData.redirect_url) {
+      return res.json({
+        success: true,
+        message: 'Payment initialized',
+        data: {
+          paymentLink: orderData.redirect_url,
+          orderNumber: order.orderNumber
+        }
+      });
+    } else {
+      console.error('Pesapal order error:', orderData);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to create Pesapal payment',
+        error: orderData
+      });
+    }
+
   } catch (error) {
-    console.error(error);
+    console.error('Payment Error:', error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
 
-
 // Start server
 const PORT = process.env.PORT || 10000;
-
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`AJ Scents Backend running on port ${PORT}`);
+  console.log(`AJ Scents Backend (Pesapal) running on port ${PORT}`);
 });
