@@ -12,7 +12,8 @@ app.use(express.json());
 const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
 const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
 const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // Sandbox
-// ===== PERFUMES =====
+const products = [
+  // PERFUMES - each has a different image
   { id: 1, name: "Noir Elegance", category: "perfume", price: 185000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
   { id: 2, name: "Rose Whisper", category: "perfume", price: 165000, image: "https://images.pexels.com/photos/965990/pexels-photo-965990.jpeg" },
   { id: 3, name: "Ocean Breeze", category: "perfume", price: 145000, image: "https://images.pexels.com/photos/258244/pexels-photo-258244.jpeg" },
@@ -22,13 +23,13 @@ const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // Sandbox
   { id: 7, name: "Jasmine Nights", category: "perfume", price: 175000, image: "https://images.pexels.com/photos/3738339/pexels-photo-3738339.jpeg" },
   { id: 8, name: "Sandalwood Soul", category: "perfume", price: 195000, image: "https://images.pexels.com/photos/12562773/pexels-photo-12562773.jpeg" },
 
-  // ===== SHOES =====
+  // SHOES
   { id: 9, name: "Premium Leather Shoe 1", category: "shoes", price: 280000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0010.jpg" },
   { id: 10, name: "Premium Leather Shoe 2", category: "shoes", price: 295000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0011.jpg" },
   { id: 11, name: "Premium Leather Shoe 3", category: "shoes", price: 310000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0012.jpg" },
   { id: 12, name: "Premium Leather Shoe 4", category: "shoes", price: 275000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0013.jpg" },
 
-  // ===== BAGS =====
+  // BAGS
   { id: 13, name: "Classic Backpack", category: "bags", price: 185000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0034.jpg" },
   { id: 14, name: "Designer Backpack", category: "bags", price: 210000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0109.jpg" },
   { id: 15, name: "Urban Backpack", category: "bags", price: 195000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0110.jpg" },
@@ -43,7 +44,6 @@ const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // Sandbox
   { id: 24, name: "Luxury Backpack", category: "bags", price: 275000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0124.jpg" },
   { id: 25, name: "Everyday Backpack", category: "bags", price: 165000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0125.jpg" }
 ];
-
 let orders = [];
 
 app.get('/', (req, res) => {
