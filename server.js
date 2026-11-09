@@ -14,14 +14,36 @@ const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
 const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // Sandbox
 
 const products = [
-  { id: 1, name: "Noir Elegance", category: "woody", price: 185000, image: "https://images.pexels.com/photos/12562773/pexels-photo-12562773.jpeg" },
-  { id: 2, name: "Rose Whisper", category: "floral", price: 165000, image: "https://images.pexels.com/photos/21067590/pexels-photo-21067590.jpeg" },
-  { id: 3, name: "Ocean Breeze", category: "fresh", price: 145000, image: "https://images.pexels.com/photos/1666405/pexels-photo-1666405.jpeg" },
-  { id: 4, name: "Golden Oud", category: "oriental", price: 245000, image: "https://images.pexels.com/photos/1961795/pexels-photo-1961795.jpeg" },
-  { id: 5, name: "Vanilla Dream", category: "oriental", price: 155000, image: "https://images.pexels.com/photos/15096784/pexels-photo-15096784.jpeg" },
-  { id: 6, name: "Citrus Bloom", category: "fresh", price: 135000, image: "https://images.pexels.com/photos/15190739/pexels-photo-15190739.jpeg" },
-  { id: 7, name: "Jasmine Nights", category: "floral", price: 175000, image: "https://images.pexels.com/photos/21067590/pexels-photo-21067590.jpeg" },
-  { id: 8, name: "Sandalwood Soul", category: "woody", price: 195000, image: "https://images.pexels.com/photos/12562773/pexels-photo-12562773.jpeg" }
+  // ===== PERFUMES =====
+  { id: 1, name: "Noir Elegance", category: "perfume", price: 185000, image: "https://images.pexels.com/photos/12562773/pexels-photo-12562773.jpeg" },
+  { id: 2, name: "Rose Whisper", category: "perfume", price: 165000, image: "https://images.pexels.com/photos/21067590/pexels-photo-21067590.jpeg" },
+  { id: 3, name: "Ocean Breeze", category: "perfume", price: 145000, image: "https://images.pexels.com/photos/1666405/pexels-photo-1666405.jpeg" },
+  { id: 4, name: "Golden Oud", category: "perfume", price: 245000, image: "https://images.pexels.com/photos/1961795/pexels-photo-1961795.jpeg" },
+  { id: 5, name: "Vanilla Dream", category: "perfume", price: 155000, image: "https://images.pexels.com/photos/15096784/pexels-photo-15096784.jpeg" },
+  { id: 6, name: "Citrus Bloom", category: "perfume", price: 135000, image: "https://images.pexels.com/photos/15190739/pexels-photo-15190739.jpeg" },
+  { id: 7, name: "Jasmine Nights", category: "perfume", price: 175000, image: "https://images.pexels.com/photos/21067590/pexels-photo-21067590.jpeg" },
+  { id: 8, name: "Sandalwood Soul", category: "perfume", price: 195000, image: "https://images.pexels.com/photos/12562773/pexels-photo-12562773.jpeg" },
+
+  // ===== SHOES =====
+  { id: 9, name: "Premium Leather Shoe 1", category: "shoes", price: 280000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0010.jpg" },
+  { id: 10, name: "Premium Leather Shoe 2", category: "shoes", price: 295000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0011.jpg" },
+  { id: 11, name: "Premium Leather Shoe 3", category: "shoes", price: 310000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0012.jpg" },
+  { id: 12, name: "Premium Leather Shoe 4", category: "shoes", price: 275000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0013.jpg" },
+
+  // ===== BAGS =====
+  { id: 13, name: "Classic Backpack", category: "bags", price: 185000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0034.jpg" },
+  { id: 14, name: "Designer Backpack", category: "bags", price: 210000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0109.jpg" },
+  { id: 15, name: "Urban Backpack", category: "bags", price: 195000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0110.jpg" },
+  { id: 16, name: "Leather Style Bag", category: "bags", price: 225000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0112.jpg" },
+  { id: 17, name: "Travel Backpack", category: "bags", price: 240000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0113.jpg" },
+  { id: 18, name: "Casual Backpack", category: "bags", price: 175000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0115.jpg" },
+  { id: 19, name: "Premium Backpack", category: "bags", price: 255000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0116.jpg" },
+  { id: 20, name: "Stylish Backpack", category: "bags", price: 190000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0117.jpg" },
+  { id: 21, name: "Modern Backpack", category: "bags", price: 205000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0119.jpg" },
+  { id: 22, name: "Executive Bag", category: "bags", price: 265000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0121.jpg" },
+  { id: 23, name: "City Backpack", category: "bags", price: 180000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0122.jpg" },
+  { id: 24, name: "Luxury Backpack", category: "bags", price: 275000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0124.jpg" },
+  { id: 25, name: "Everyday Backpack", category: "bags", price: 165000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0125.jpg" }
 ];
 
 let orders = [];
