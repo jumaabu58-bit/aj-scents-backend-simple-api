@@ -7,13 +7,16 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
-// PUT YOUR REAL TEST KEYS HERE
+// YOUR PESAPAL KEYS
 // ======================
 const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
 const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
-const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // Sandbox
+
+// Try SANDBOX first. If keys are LIVE, change to the live URL below.
+const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // SANDBOX
+// const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api'; // LIVE
+
 const products = [
-  // PERFUMES - each has a different image
   { id: 1, name: "Noir Elegance", category: "perfume", price: 185000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
   { id: 2, name: "Rose Whisper", category: "perfume", price: 165000, image: "https://images.pexels.com/photos/965990/pexels-photo-965990.jpeg" },
   { id: 3, name: "Ocean Breeze", category: "perfume", price: 145000, image: "https://images.pexels.com/photos/258244/pexels-photo-258244.jpeg" },
@@ -22,14 +25,10 @@ const products = [
   { id: 6, name: "Citrus Bloom", category: "perfume", price: 135000, image: "https://images.pexels.com/photos/15190739/pexels-photo-15190739.jpeg" },
   { id: 7, name: "Jasmine Nights", category: "perfume", price: 175000, image: "https://images.pexels.com/photos/3738339/pexels-photo-3738339.jpeg" },
   { id: 8, name: "Sandalwood Soul", category: "perfume", price: 195000, image: "https://images.pexels.com/photos/12562773/pexels-photo-12562773.jpeg" },
-
-  // SHOES
   { id: 9, name: "Premium Leather Shoe 1", category: "shoes", price: 280000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0010.jpg" },
   { id: 10, name: "Premium Leather Shoe 2", category: "shoes", price: 295000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0011.jpg" },
   { id: 11, name: "Premium Leather Shoe 3", category: "shoes", price: 310000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0012.jpg" },
   { id: 12, name: "Premium Leather Shoe 4", category: "shoes", price: 275000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261031-WA0013.jpg" },
-
-  // BAGS
   { id: 13, name: "Classic Backpack", category: "bags", price: 185000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0034.jpg" },
   { id: 14, name: "Designer Backpack", category: "bags", price: 210000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0109.jpg" },
   { id: 15, name: "Urban Backpack", category: "bags", price: 195000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0110.jpg" },
@@ -44,6 +43,7 @@ const products = [
   { id: 24, name: "Luxury Backpack", category: "bags", price: 275000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0124.jpg" },
   { id: 25, name: "Everyday Backpack", category: "bags", price: 165000, image: "https://jumaabu58-bit.github.io/aj-scents-frontend/IMG-20261029-WA0125.jpg" }
 ];
+
 let orders = [];
 
 app.get('/', (req, res) => {
@@ -111,7 +111,7 @@ app.post('/api/payments/initialize', async (req, res) => {
     }
 
     // 1. Get Pesapal Token
-    const tokenRes = await fetch(`${PESAPAL_BASE_URL}/Auth/RequestToken`, {
+    const tokenRes = await fetch(PESAPAL_BASE_URL + '/Auth/RequestToken', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -129,7 +129,7 @@ app.post('/api/payments/initialize', async (req, res) => {
       console.error('Token error:', tokenData);
       return res.status(400).json({
         success: false,
-        message: 'Failed to get Pesapal token',
+        message: 'Failed to get Pesapal token. Check if keys match sandbox/live URL.',
         error: tokenData
       });
     }
@@ -141,7 +141,7 @@ app.post('/api/payments/initialize', async (req, res) => {
       id: order.orderNumber,
       currency: 'UGX',
       amount: order.totalAmount,
-      description: `AJ Scents Order ${order.orderNumber}`,
+      description: 'AJ Scents Order ' + order.orderNumber,
       callback_url: 'https://jumaabu58-bit.github.io/aj-scents-frontend/',
       billing_address: {
         email_address: order.customer.email || 'customer@ajscents.com',
@@ -152,12 +152,12 @@ app.post('/api/payments/initialize', async (req, res) => {
       }
     };
 
-    const orderRes = await fetch(`${PESAPAL_BASE_URL}/Transactions/SubmitOrderRequest`, {
+    const orderRes = await fetch(PESAPAL_BASE_URL + '/Transactions/SubmitOrderRequest', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': 'Bearer ' + token
       },
       body: JSON.stringify(orderPayload)
     });
@@ -190,5 +190,5 @@ app.post('/api/payments/initialize', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`AJ Scents Backend (Pesapal) running on port ${PORT}`);
+  console.log('AJ Scents Backend (Pesapal) running on port ' + PORT);
 });
