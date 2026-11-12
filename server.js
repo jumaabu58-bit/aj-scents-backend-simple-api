@@ -7,14 +7,11 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
-// YOUR PESAPAL KEYS
+// LIVE PESAPAL KEYS
 // ======================
 const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
 const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
-
-// Try SANDBOX first. If keys are LIVE, change to the live URL below.
-const PESAPAL_BASE_URL = 'https://cybqa.pesapal.com/pesapalv3/api'; // SANDBOX
-// const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api'; // LIVE
+const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api'; // LIVE
 
 const products = [
   { id: 1, name: "Noir Elegance", category: "perfume", price: 185000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
@@ -47,7 +44,7 @@ const products = [
 let orders = [];
 
 app.get('/', (req, res) => {
-  res.json({ message: 'AJ Scents Backend with Pesapal is running!', status: 'OK' });
+  res.json({ message: 'AJ Scents Backend with Pesapal LIVE is running!', status: 'OK' });
 });
 
 app.get('/api/products', (req, res) => {
@@ -110,7 +107,7 @@ app.post('/api/payments/initialize', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // 1. Get Pesapal Token
+    // 1. Get Pesapal Token (LIVE)
     const tokenRes = await fetch(PESAPAL_BASE_URL + '/Auth/RequestToken', {
       method: 'POST',
       headers: {
@@ -129,7 +126,7 @@ app.post('/api/payments/initialize', async (req, res) => {
       console.error('Token error:', tokenData);
       return res.status(400).json({
         success: false,
-        message: 'Failed to get Pesapal token. Check if keys match sandbox/live URL.',
+        message: 'Failed to get Pesapal token',
         error: tokenData
       });
     }
@@ -190,5 +187,5 @@ app.post('/api/payments/initialize', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('AJ Scents Backend (Pesapal) running on port ' + PORT);
+  console.log('AJ Scents Backend (Pesapal LIVE) running on port ' + PORT);
 });
