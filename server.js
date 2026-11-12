@@ -12,6 +12,8 @@ app.use(express.json());
 const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
 const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
 const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api'; // LIVE
+const CALLBACK_URL = 'https://jumaabu58-bit.github.io/aj-scents-frontend/';
+const IPN_URL = 'https://aj-scents-backend-simple-api.onrender.com/api/payments/ipn';
 
 const products = [
   { id: 1, name: "Test Payment Item", category: "perfume", price: 1000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
@@ -42,6 +44,78 @@ const products = [
 ];
 
 let orders = [];
+let cachedToken = null;
+let tokenExpiry = 0;
+let cachedIpnId = null;
+
+async function getPesapalToken() {
+  if (cachedToken && Date.now() < tokenExpiry) {
+    return cachedToken;
+  }
+
+  const tokenRes = await fetch(PESAPAL_BASE_URL + '/Auth/RequestToken', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      consumer_key: PESAPAL_CONSUMER_KEY,
+      consumer_secret: PESAPAL_CONSUMER_SECRET
+    })
+  });
+
+  const tokenData = await tokenRes.json();
+  if (!tokenData.token) {
+    throw new Error('Failed to get Pesapal token: ' + JSON.stringify(tokenData));
+  }
+
+  cachedToken = tokenData.token;
+  tokenExpiry = Date.now() + 4 * 60 * 1000; // 4 minutes
+  return cachedToken;
+}
+
+async function getIpnId(token) {
+  if (cachedIpnId) return cachedIpnId;
+
+  // Try to register IPN
+  const regRes = await fetch(PESAPAL_BASE_URL + '/URLSetup/RegisterIPN', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    },
+    body: JSON.stringify({
+      url: IPN_URL,
+      ipn_notification_type: 'GET'
+    })
+  });
+
+  const regData = await regRes.json();
+
+  if (regData.ipn_id) {
+    cachedIpnId = regData.ipn_id;
+    return cachedIpnId;
+  }
+
+  // If already registered, list existing IPNs
+  const listRes = await fetch(PESAPAL_BASE_URL + '/URLSetup/GetIpnList', {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer ' + token
+    }
+  });
+
+  const listData = await listRes.json();
+  if (Array.isArray(listData) && listData.length > 0) {
+    cachedIpnId = listData[0].ipn_id;
+    return cachedIpnId;
+  }
+
+  throw new Error('Could not get IPN ID: ' + JSON.stringify(regData));
+}
 
 app.get('/', (req, res) => {
   res.json({ message: 'AJ Scents Backend with Pesapal LIVE is running!', status: 'OK' });
@@ -49,6 +123,17 @@ app.get('/', (req, res) => {
 
 app.get('/api/products', (req, res) => {
   res.json({ success: true, count: products.length, data: products });
+});
+
+// IPN callback from Pesapal
+app.get('/api/payments/ipn', (req, res) => {
+  console.log('IPN received:', req.query);
+  res.status(200).json({ message: 'IPN received' });
+});
+
+app.post('/api/payments/ipn', (req, res) => {
+  console.log('IPN POST received:', req.body);
+  res.status(200).json({ message: 'IPN received' });
 });
 
 app.post('/api/orders', (req, res) => {
@@ -107,37 +192,16 @@ app.post('/api/payments/initialize', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const tokenRes = await fetch(PESAPAL_BASE_URL + '/Auth/RequestToken', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        consumer_key: PESAPAL_CONSUMER_KEY,
-        consumer_secret: PESAPAL_CONSUMER_SECRET
-      })
-    });
-
-    const tokenData = await tokenRes.json();
-
-    if (!tokenData.token) {
-      console.error('Token error:', tokenData);
-      return res.status(400).json({
-        success: false,
-        message: 'Failed to get Pesapal token',
-        error: tokenData
-      });
-    }
-
-    const token = tokenData.token;
+    const token = await getPesapalToken();
+    const ipnId = await getIpnId(token);
 
     const orderPayload = {
       id: order.orderNumber,
       currency: 'UGX',
       amount: order.totalAmount,
       description: 'AJ Scents Order ' + order.orderNumber,
-      callback_url: 'https://jumaabu58-bit.github.io/aj-scents-frontend/',
+      callback_url: CALLBACK_URL,
+      notification_id: ipnId,
       billing_address: {
         email_address: order.customer.email || 'customer@ajscents.com',
         phone_number: order.customer.phone,
@@ -179,11 +243,11 @@ app.post('/api/payments/initialize', async (req, res) => {
 
   } catch (error) {
     console.error('Payment Error:', error);
-    res.status(500).json({ success: false, message: 'Server Error' });
+    res.status(500).json({ success: false, message: error.message || 'Server Error' });
   }
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('AJ Scents Backend (Pesapal LIVE) running on port ' + PORT);
+  console.log('AJ Scents Backend (Pesapal LIVE + IPN) running on port ' + PORT);
 });
