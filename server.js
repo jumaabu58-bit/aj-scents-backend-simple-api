@@ -14,7 +14,7 @@ const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
 const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api'; // LIVE
 
 const products = [
-  { id: 1, name: "Noir Elegance", category: "perfume", price: 185000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
+  { id: 1, name: "Test Payment Item", category: "perfume", price: 1000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
   { id: 2, name: "Rose Whisper", category: "perfume", price: 165000, image: "https://images.pexels.com/photos/965990/pexels-photo-965990.jpeg" },
   { id: 3, name: "Ocean Breeze", category: "perfume", price: 145000, image: "https://images.pexels.com/photos/258244/pexels-photo-258244.jpeg" },
   { id: 4, name: "Golden Oud", category: "perfume", price: 245000, image: "https://images.pexels.com/photos/1961795/pexels-photo-1961795.jpeg" },
@@ -107,7 +107,6 @@ app.post('/api/payments/initialize', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // 1. Get Pesapal Token (LIVE)
     const tokenRes = await fetch(PESAPAL_BASE_URL + '/Auth/RequestToken', {
       method: 'POST',
       headers: {
@@ -133,7 +132,6 @@ app.post('/api/payments/initialize', async (req, res) => {
 
     const token = tokenData.token;
 
-    // 2. Submit Order to Pesapal
     const orderPayload = {
       id: order.orderNumber,
       currency: 'UGX',
