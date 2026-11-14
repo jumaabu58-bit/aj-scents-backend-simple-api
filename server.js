@@ -111,10 +111,10 @@ app.post('/api/payments/stripe', async (req, res) => {
 
     // Convert UGX -> USD for Stripe
     // Approx: 3700 UGX = 1 USD
-    // Stripe USD uses cents, so multiply by 100
-    // Minimum charge about $0.50
+    // Stripe uses cents for USD
+    // Minimum $1.00 for your Stripe account (AED settlement)
     const UGX_TO_USD = 3700;
-    const amountUsdCents = Math.max(50, Math.round((order.totalAmount / UGX_TO_USD) * 100));
+    const amountUsdCents = Math.max(100, Math.round((order.totalAmount / UGX_TO_USD) * 100));
 
     const productName = order.items.map(function (i) {
       return i.name + ' x' + i.quantity;
