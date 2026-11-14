@@ -12,12 +12,6 @@ app.use(express.json());
 const STRIPE_SECRET_KEY = 'sk_test_51Uav82GZEht3yltUxA0spEbIBjxiR1DeJpOLTyMTIT5EFyFD5vYZAePdGk0E01PUVppWoEc5dC0X85vTQOC0KaDc00LLSECP0u';
 const FRONTEND_URL = 'https://jumaabu58-bit.github.io/aj-scents-frontend/';
 
-// Optional: keep Pesapal (can ignore if unused)
-const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
-const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
-const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api';
-const IPN_URL = 'https://aj-scents-backend-simple-api.onrender.com/api/payments/ipn';
-
 const products = [
   { id: 1, name: "Test Payment Item", category: "perfume", price: 1000, image: "https://images.pexels.com/photos/965989/pexels-photo-965989.jpeg" },
   { id: 2, name: "Rose Whisper", category: "perfume", price: 165000, image: "https://images.pexels.com/photos/965990/pexels-photo-965990.jpeg" },
@@ -59,15 +53,18 @@ app.get('/api/products', (req, res) => {
 app.post('/api/orders', (req, res) => {
   try {
     const { name, phone, email, address, items } = req.body;
+
     if (!name || !phone || !address || !items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     let totalAmount = 0;
     const orderItems = [];
+
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);
       if (!product) continue;
+
       totalAmount += product.price * item.quantity;
       orderItems.push({
         productId: product.id,
@@ -86,9 +83,14 @@ app.post('/api/orders', (req, res) => {
       paymentStatus: 'pending',
       createdAt: new Date()
     };
+
     orders.push(order);
 
-    res.status(201).json({ success: true, message: 'Order created successfully', data: order });
+    res.status(201).json({
+      success: true,
+      message: 'Order created successfully',
+      data: order
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server Error' });
@@ -96,36 +98,41 @@ app.post('/api/orders', (req, res) => {
 });
 
 // ======================
-// STRIPE CHECKOUT
+// STRIPE CHECKOUT (USD)
 // ======================
 app.post('/api/payments/stripe', async (req, res) => {
   try {
     const { orderId } = req.body;
     const order = orders.find(o => o.id === Number(orderId));
+
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    // Stripe amounts are in the smallest currency unit.
-    // For UGX, Stripe uses the amount as whole shillings (zero-decimal currency).
-    const lineItems = order.items.map(item => {
-      return (
-        'line_items[' + order.items.indexOf(item) + '][price_data][currency]=ugx&' +
-        'line_items[' + order.items.indexOf(item) + '][price_data][product_data][name]=' + encodeURIComponent(item.name) + '&' +
-        'line_items[' + order.items.indexOf(item) + '][price_data][unit_amount]=' + item.price + '&' +
-        'line_items[' + order.items.indexOf(item) + '][quantity]=' + item.quantity
-      );
-    }).join('&');
+    // Convert UGX -> USD for Stripe
+    // Approx: 3700 UGX = 1 USD
+    // Stripe USD uses cents, so multiply by 100
+    // Minimum charge about $0.50
+    const UGX_TO_USD = 3700;
+    const amountUsdCents = Math.max(50, Math.round((order.totalAmount / UGX_TO_USD) * 100));
+
+    const productName = order.items.map(function (i) {
+      return i.name + ' x' + i.quantity;
+    }).join(', ');
 
     const body =
-      lineItems +
+      'line_items[0][price_data][currency]=usd' +
+      '&line_items[0][price_data][product_data][name]=' + encodeURIComponent(productName || 'AJ Scents Order') +
+      '&line_items[0][price_data][unit_amount]=' + amountUsdCents +
+      '&line_items[0][quantity]=1' +
       '&mode=payment' +
       '&success_url=' + encodeURIComponent(FRONTEND_URL + '?payment=success&order=' + order.orderNumber) +
       '&cancel_url=' + encodeURIComponent(FRONTEND_URL + '?payment=cancelled') +
       '&customer_email=' + encodeURIComponent(order.customer.email || 'customer@ajscents.com') +
       '&metadata[orderNumber]=' + encodeURIComponent(order.orderNumber) +
       '&metadata[customerName]=' + encodeURIComponent(order.customer.name) +
-      '&metadata[customerPhone]=' + encodeURIComponent(order.customer.phone);
+      '&metadata[customerPhone]=' + encodeURIComponent(order.customer.phone) +
+      '&metadata[totalUGX]=' + encodeURIComponent(String(order.totalAmount));
 
     const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
@@ -164,5 +171,5 @@ app.post('/api/payments/stripe', async (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('AJ Scents Backend (Stripe) running on port ' + PORT);
+  console.log('AJ Scents Backend (Stripe USD) running on port ' + PORT);
 });
