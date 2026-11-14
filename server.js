@@ -7,12 +7,15 @@ app.use(cors());
 app.use(express.json());
 
 // ======================
-// LIVE PESAPAL KEYS
+// STRIPE TEST KEYS
 // ======================
+const STRIPE_SECRET_KEY = 'sk_test_51Uav82GZEht3yltUxA0spEbIBjxiR1DeJpOLTyMTIT5EFyFD5vYZAePdGk0E01PUVppWoEc5dC0X85vTQOC0KaDc00LLSECP0u';
+const FRONTEND_URL = 'https://jumaabu58-bit.github.io/aj-scents-frontend/';
+
+// Optional: keep Pesapal (can ignore if unused)
 const PESAPAL_CONSUMER_KEY = 'a8otG02MLwi9s7iNcNUpkWAbve0/nI1u';
 const PESAPAL_CONSUMER_SECRET = '5qOPqottmFYukZ0Pc6QTCRBhsfI=';
-const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api'; // LIVE
-const CALLBACK_URL = 'https://jumaabu58-bit.github.io/aj-scents-frontend/';
+const PESAPAL_BASE_URL = 'https://pay.pesapal.com/v3/api';
 const IPN_URL = 'https://aj-scents-backend-simple-api.onrender.com/api/payments/ipn';
 
 const products = [
@@ -44,113 +47,27 @@ const products = [
 ];
 
 let orders = [];
-let cachedToken = null;
-let tokenExpiry = 0;
-let cachedIpnId = null;
-
-async function getPesapalToken() {
-  if (cachedToken && Date.now() < tokenExpiry) {
-    return cachedToken;
-  }
-
-  const tokenRes = await fetch(PESAPAL_BASE_URL + '/Auth/RequestToken', {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      consumer_key: PESAPAL_CONSUMER_KEY,
-      consumer_secret: PESAPAL_CONSUMER_SECRET
-    })
-  });
-
-  const tokenData = await tokenRes.json();
-  if (!tokenData.token) {
-    throw new Error('Failed to get Pesapal token: ' + JSON.stringify(tokenData));
-  }
-
-  cachedToken = tokenData.token;
-  tokenExpiry = Date.now() + 4 * 60 * 1000; // 4 minutes
-  return cachedToken;
-}
-
-async function getIpnId(token) {
-  if (cachedIpnId) return cachedIpnId;
-
-  // Try to register IPN
-  const regRes = await fetch(PESAPAL_BASE_URL + '/URLSetup/RegisterIPN', {
-    method: 'POST',
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    },
-    body: JSON.stringify({
-      url: IPN_URL,
-      ipn_notification_type: 'GET'
-    })
-  });
-
-  const regData = await regRes.json();
-
-  if (regData.ipn_id) {
-    cachedIpnId = regData.ipn_id;
-    return cachedIpnId;
-  }
-
-  // If already registered, list existing IPNs
-  const listRes = await fetch(PESAPAL_BASE_URL + '/URLSetup/GetIpnList', {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-      'Authorization': 'Bearer ' + token
-    }
-  });
-
-  const listData = await listRes.json();
-  if (Array.isArray(listData) && listData.length > 0) {
-    cachedIpnId = listData[0].ipn_id;
-    return cachedIpnId;
-  }
-
-  throw new Error('Could not get IPN ID: ' + JSON.stringify(regData));
-}
 
 app.get('/', (req, res) => {
-  res.json({ message: 'AJ Scents Backend with Pesapal LIVE is running!', status: 'OK' });
+  res.json({ message: 'AJ Scents Backend with Stripe is running!', status: 'OK' });
 });
 
 app.get('/api/products', (req, res) => {
   res.json({ success: true, count: products.length, data: products });
 });
 
-// IPN callback from Pesapal
-app.get('/api/payments/ipn', (req, res) => {
-  console.log('IPN received:', req.query);
-  res.status(200).json({ message: 'IPN received' });
-});
-
-app.post('/api/payments/ipn', (req, res) => {
-  console.log('IPN POST received:', req.body);
-  res.status(200).json({ message: 'IPN received' });
-});
-
 app.post('/api/orders', (req, res) => {
   try {
     const { name, phone, email, address, items } = req.body;
-
     if (!name || !phone || !address || !items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
     let totalAmount = 0;
     const orderItems = [];
-
     for (const item of items) {
       const product = products.find(p => p.id === item.productId);
       if (!product) continue;
-
       totalAmount += product.price * item.quantity;
       orderItems.push({
         productId: product.id,
@@ -169,85 +86,83 @@ app.post('/api/orders', (req, res) => {
       paymentStatus: 'pending',
       createdAt: new Date()
     };
-
     orders.push(order);
 
-    res.status(201).json({
-      success: true,
-      message: 'Order created successfully',
-      data: order
-    });
+    res.status(201).json({ success: true, message: 'Order created successfully', data: order });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Server Error' });
   }
 });
 
-app.post('/api/payments/initialize', async (req, res) => {
+// ======================
+// STRIPE CHECKOUT
+// ======================
+app.post('/api/payments/stripe', async (req, res) => {
   try {
     const { orderId } = req.body;
     const order = orders.find(o => o.id === Number(orderId));
-
     if (!order) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const token = await getPesapalToken();
-    const ipnId = await getIpnId(token);
+    // Stripe amounts are in the smallest currency unit.
+    // For UGX, Stripe uses the amount as whole shillings (zero-decimal currency).
+    const lineItems = order.items.map(item => {
+      return (
+        'line_items[' + order.items.indexOf(item) + '][price_data][currency]=ugx&' +
+        'line_items[' + order.items.indexOf(item) + '][price_data][product_data][name]=' + encodeURIComponent(item.name) + '&' +
+        'line_items[' + order.items.indexOf(item) + '][price_data][unit_amount]=' + item.price + '&' +
+        'line_items[' + order.items.indexOf(item) + '][quantity]=' + item.quantity
+      );
+    }).join('&');
 
-    const orderPayload = {
-      id: order.orderNumber,
-      currency: 'UGX',
-      amount: order.totalAmount,
-      description: 'AJ Scents Order ' + order.orderNumber,
-      callback_url: CALLBACK_URL,
-      notification_id: ipnId,
-      billing_address: {
-        email_address: order.customer.email || 'customer@ajscents.com',
-        phone_number: order.customer.phone,
-        country_code: 'UG',
-        first_name: order.customer.name.split(' ')[0] || 'Customer',
-        last_name: order.customer.name.split(' ').slice(1).join(' ') || 'AJScents'
-      }
-    };
+    const body =
+      lineItems +
+      '&mode=payment' +
+      '&success_url=' + encodeURIComponent(FRONTEND_URL + '?payment=success&order=' + order.orderNumber) +
+      '&cancel_url=' + encodeURIComponent(FRONTEND_URL + '?payment=cancelled') +
+      '&customer_email=' + encodeURIComponent(order.customer.email || 'customer@ajscents.com') +
+      '&metadata[orderNumber]=' + encodeURIComponent(order.orderNumber) +
+      '&metadata[customerName]=' + encodeURIComponent(order.customer.name) +
+      '&metadata[customerPhone]=' + encodeURIComponent(order.customer.phone);
 
-    const orderRes = await fetch(PESAPAL_BASE_URL + '/Transactions/SubmitOrderRequest', {
+    const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Authorization': 'Bearer ' + STRIPE_SECRET_KEY,
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify(orderPayload)
+      body: body
     });
 
-    const orderData = await orderRes.json();
+    const session = await stripeRes.json();
 
-    if (orderData.redirect_url) {
-      return res.json({
-        success: true,
-        message: 'Payment initialized',
-        data: {
-          paymentLink: orderData.redirect_url,
-          orderNumber: order.orderNumber
-        }
-      });
-    } else {
-      console.error('Pesapal order error:', orderData);
+    if (!session.url) {
+      console.error('Stripe error:', session);
       return res.status(400).json({
         success: false,
-        message: 'Failed to create Pesapal payment',
-        error: orderData
+        message: session.error ? session.error.message : 'Failed to create Stripe session',
+        error: session
       });
     }
 
+    res.json({
+      success: true,
+      message: 'Stripe checkout created',
+      data: {
+        paymentLink: session.url,
+        sessionId: session.id,
+        orderNumber: order.orderNumber
+      }
+    });
   } catch (error) {
-    console.error('Payment Error:', error);
+    console.error('Stripe Payment Error:', error);
     res.status(500).json({ success: false, message: error.message || 'Server Error' });
   }
 });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('AJ Scents Backend (Pesapal LIVE + IPN) running on port ' + PORT);
+  console.log('AJ Scents Backend (Stripe) running on port ' + PORT);
 });
